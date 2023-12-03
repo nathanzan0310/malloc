@@ -224,22 +224,44 @@ void *mm_realloc(void *ptr, long size) {
                 if (bbNextSize > requiredSize + MINBLOCKSIZE) {
                     pull_free_block(block_next(new));
                     printf("new->payload before move: %p\n", (void *) new->payload);
-                    memmove((char *) new + bbNextSize - requiredSize + 1 , new->payload, block_size(new) - TAGS_SIZE);
+                    memcpy((char *) new + bbNextSize - requiredSize + 1 , new->payload, block_size(new) - TAGS_SIZE);
                     block_set_size_and_allocated(new, bbNextSize - requiredSize, 0);
                     insert_free_block(new);
-                    new = block_next(new);
+                    new = (block_t *)((char *) new + bbNextSize - requiredSize);
                     block_set_size_and_allocated(new, requiredSize, 1);
                     printf("new->payload after move: %p\n", (void *) new->payload);
-                    return new + 1;
+                    return block_prev(new) + 1;
+//                    block_set_size_and_allocated(new, requiredSize, 1);
+//                    new = block_next(new);
+//                    block_set_size_and_allocated(new, bbNextSize - requiredSize, 0);
+//                    insert_free_block(new);
+//                    return block_prev(new) + 1;
                 }
-
             }
             if (!block_prev_allocated(new)) {
-                pull_free_block(block_prev(new));
-                long freedSize = block_size(new);
-                new = block_prev(new);
-                block_set_size_and_allocated(new, freedSize + block_size(new),
-                                             0);
+                long bbPrevSize = block_prev_size(new) + block_size(new);
+                if (bbPrevSize == requiredSize) {
+                    pull_free_block(block_prev(new));
+                    memmove(block_prev(new)->payload, new->payload, block_size(new) - TAGS_SIZE);
+                    block_set_size_and_allocated(block_prev(new), requiredSize, 1);
+                    return block_prev(new) + 1;
+                }
+                if (bbPrevSize > requiredSize + MINBLOCKSIZE) {
+                    block_set_size(block_prev(new), bbPrevSize - requiredSize);
+                    void *ogPayload = new->payload;
+                    long ogPayloadSize = block_size(new) - TAGS_SIZE;
+                    new = block_next(block_prev(new));
+                    memmove(new->payload, ogPayload, ogPayloadSize);
+                    block_set_size_and_allocated(new, requiredSize, 1);
+                    return new + 1;
+                }
+            }
+            if ((block_prev_allocated(new) && block_next_allocated(new)) ||
+                block_next_size(new) + block_size(new) - requiredSize < MINBLOCKSIZE ||
+                block_prev_size(new) + block_size(new) - requiredSize < MINBLOCKSIZE) {
+                printf("balls\n");
+                mm_free(ptr);
+                return mm_malloc(size);
             }
         }
     }
