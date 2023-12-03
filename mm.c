@@ -230,7 +230,7 @@ void *mm_realloc(void *ptr, long size) {
                     new = (block_t *)((char *) new + bbNextSize - requiredSize);
                     block_set_size_and_allocated(new, requiredSize, 1);
                     printf("new->payload after move: %p\n", (void *) new->payload);
-                    return block_prev(new) + 1;
+                    return new + 1;
 //                    block_set_size_and_allocated(new, requiredSize, 1);
 //                    new = block_next(new);
 //                    block_set_size_and_allocated(new, bbNextSize - requiredSize, 0);
