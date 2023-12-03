@@ -43,11 +43,11 @@ static inline long align(long size) {
  */
 int mm_init(void) {
     flist_first = NULL;
-    if ((prologue = mem_sbrk(TAGS_SIZE * 2)) == (void *)-1) {
+    if ((prologue = mem_sbrk(TAGS_SIZE * 2)) == (void *) -1) {
         perror("mem_sbrk");
         return -1;
     }
-    epilogue = (block_t *)((char *)prologue + TAGS_SIZE);
+    epilogue = (block_t *) ((char *) prologue + TAGS_SIZE);
     block_set_size_and_allocated(prologue, TAGS_SIZE, 1);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
     return 0;
@@ -65,12 +65,13 @@ int mm_init(void) {
  *          is a multiple of ALIGNMENT), or NULL if an error occurred
  */
 void *mm_malloc(long size) {
-    (void)size;  // avoid unused variable warnings
+    (void) size;  // avoid unused variable warnings
     // TODO
     if (size <= 0) {
         fprintf(stderr, "Error: size is less than or equal to 0\n");
         return NULL;
     }
+
     long requiredSize = align(size);
     block_t *new = flist_first;
 
@@ -89,7 +90,7 @@ void *mm_malloc(long size) {
                 //                + 1));
                 return new + 1;
             }
-            if (new->size >= requiredSize + MINBLOCKSIZE * 1) {
+            if (new->size >= requiredSize + MINBLOCKSIZE) {
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
@@ -117,7 +118,7 @@ void *mm_malloc(long size) {
                     return new + 1;
                 }
             }
-            if (mem_sbrk(addon) == (void *)-1) {
+            if (mem_sbrk(addon) == (void *) -1) {
                 perror("mem_sbrk");
                 return NULL;
             }
@@ -133,7 +134,7 @@ void *mm_malloc(long size) {
             return new + 1;
         }
     }
-    if (mem_sbrk(requiredSize) == (void *)-1) {
+    if (mem_sbrk(requiredSize) == (void *) -1) {
         perror("mem_sbrk");
         return NULL;
     }
@@ -158,14 +159,14 @@ void *mm_malloc(long size) {
  * returns: nothing
  */
 void mm_free(void *ptr) {
-    (void)ptr;  // avoid unused variable warnings
+    (void) ptr;  // avoid unused variable warnings
     // TODO=
     block_t *freed = payload_to_block(ptr);
     if (ptr != NULL) {
         if (!block_next_allocated(freed)) {
             pull_free_block(block_next(freed));
             block_set_size_and_allocated(
-                freed, block_size(freed) + block_next_size(freed), 0);
+                    freed, block_size(freed) + block_next_size(freed), 0);
         }
         if (!block_prev_allocated(freed)) {
             pull_free_block(block_prev(freed));
@@ -194,8 +195,54 @@ void mm_free(void *ptr) {
  * returns: a pointer to the new memory block's payload
  */
 void *mm_realloc(void *ptr, long size) {
-    (void)ptr, (void)size;  // avoid unused variable warnings
+    (void) ptr, (void) size;  // avoid unused variable warnings
     // TODO
+    long requiredSize = align(size);
+    block_t *new = payload_to_block(ptr);
+    if (MINBLOCKSIZE > requiredSize + TAGS_SIZE)
+        requiredSize = MINBLOCKSIZE;
+    else
+        requiredSize += TAGS_SIZE;
+    if (size == 0) {
+        mm_free(ptr);
+        return NULL;
+    } else if (ptr == NULL) {
+        return mm_malloc(size);
+    } else {
+        if (size <= block_size(new)) {
+            mm_free(ptr);
+            return mm_malloc(size);
+        } else {
+            if (!block_next_allocated(new)) {
+                long bbNextSize = block_next_size(new) + block_size(new);
+                if (bbNextSize == requiredSize) {
+                    pull_free_block(block_next(new));
+                    block_set_size_and_allocated(
+                            new, block_size(new) + block_next_size(new), 1);
+                    return new + 1;
+                }
+                if (bbNextSize > requiredSize + MINBLOCKSIZE) {
+                    pull_free_block(block_next(new));
+                    printf("new->payload before move: %p\n", (void *) new->payload);
+                    memmove((char *) new + bbNextSize - requiredSize + 1 , new->payload, block_size(new) - TAGS_SIZE);
+                    block_set_size_and_allocated(new, bbNextSize - requiredSize, 0);
+                    insert_free_block(new);
+                    new = block_next(new);
+                    block_set_size_and_allocated(new, requiredSize, 1);
+                    printf("new->payload after move: %p\n", (void *) new->payload);
+                    return new + 1;
+                }
+
+            }
+            if (!block_prev_allocated(new)) {
+                pull_free_block(block_prev(new));
+                long freedSize = block_size(new);
+                new = block_prev(new);
+                block_set_size_and_allocated(new, freedSize + block_size(new),
+                                             0);
+            }
+        }
+    }
 
     return NULL;
 }
