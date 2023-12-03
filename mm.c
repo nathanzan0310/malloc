@@ -88,7 +88,7 @@ void *mm_malloc(long size) {
 //                printf("payload address: %p\n", (void *) (new + 1));
                 return new + 1;
             }
-            if (new->size >= requiredSize + MINBLOCKSIZE) {
+            if (new->size >= requiredSize + MINBLOCKSIZE * 3) {
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
@@ -100,19 +100,17 @@ void *mm_malloc(long size) {
         }
         if (block_next_size(new) == TAGS_SIZE) {
 //            printf("requiredSize - block_size(new) = %ld\n", requiredSize - block_size(new));
-
             long addon;
             int reqSizeLarger = 0;
             if (block_size(new) < requiredSize) {
                 addon = requiredSize - block_size(new);
             } else {
-                addon = MINBLOCKSIZE - (block_size(new) - requiredSize);
+                addon = 5 * MINBLOCKSIZE - (block_size(new) - requiredSize);
                 reqSizeLarger = 1;
                 if (addon < 0) {
                     block_set_size(new, block_size(new) - requiredSize);
                     new = block_next(new);
                     block_set_size_and_allocated(new, requiredSize, 1);
-//                printf("payload address: %p\n", (void *) (new + 1));
                     return new + 1;
                 }
             }
@@ -122,7 +120,7 @@ void *mm_malloc(long size) {
                 return NULL;
             }
             if (reqSizeLarger) {
-                block_set_size(new, MINBLOCKSIZE);
+                block_set_size(new, 5 * MINBLOCKSIZE);
                 new = block_next(new);
             } else {
                 pull_free_block(new);
