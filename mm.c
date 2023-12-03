@@ -41,7 +41,17 @@ static inline long align(long size) {
  * returns: 0, if successful
  *         -1, if an error occurs
  */
-int mm_init(void) { return -1; }
+int mm_init(void) {
+    flist_first = NULL;
+    if ((prologue = mem_sbrk(TAGS_SIZE * 2)) == (void *) -1) {
+        perror("mem_sbrk");
+        return -1;
+    }
+    epilogue = (block_t *) ((char *) prologue + TAGS_SIZE);
+    block_set_size_and_allocated(prologue, TAGS_SIZE, 1);
+    block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
+    return 0;
+}
 
 /*     _ __ ___  _ __ ___      _ __ ___   __ _| | | ___   ___
  *    | '_ ` _ \| '_ ` _ \    | '_ ` _ \ / _` | | |/ _ \ / __|
@@ -57,8 +67,66 @@ int mm_init(void) { return -1; }
 void *mm_malloc(long size) {
     (void) size;  // avoid unused variable warnings
     // TODO
+    if (size <= 0) {
+        fprintf(stderr, "Error: size is less than or equal to 0\n");
+        return NULL;
+    }
+    long requiredSize = align(size);
+    block_t *new = flist_first;
+    int notBigEnough = 0;
 
-    return NULL;
+    if (MINBLOCKSIZE > requiredSize + TAGS_SIZE)
+        requiredSize = MINBLOCKSIZE;
+    else {
+        requiredSize += TAGS_SIZE;
+    }
+
+    if (flist_first != NULL) {
+        int firstFlag = 1;
+        while (block_flink(new) != flist_first || firstFlag) {
+            if (new->size == requiredSize) {
+                pull_free_block(new);
+                block_set_size_and_allocated(new, requiredSize, 1);
+//                printf("payload address: %p\n", (void *) (new + 1));
+                return new + 1;
+            }
+            if (new->size > requiredSize) {
+                block_set_size(new, block_size(new) - requiredSize);
+                new = block_next(new);
+                block_set_size_and_allocated(new, requiredSize, 1);
+//                printf("payload address: %p\n", (void *) (new + 1));
+                return new + 1;
+            }
+            firstFlag = 0;
+            new = block_flink(new);
+        }
+        if (block_next_size(new) == TAGS_SIZE) {
+            if (mem_sbrk(requiredSize - block_size(new)) == (void *) -1) {
+                perror("mem_sbrk");
+                return NULL;
+            }
+            pull_free_block(new);
+            block_set_size_and_allocated(new, requiredSize, 1);
+            epilogue = block_next(new);
+            block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
+            return new + 1;
+        }
+        notBigEnough = 1;
+    }
+    if(flist_first == NULL || (flist_first != NULL && notBigEnough)) {
+        if (mem_sbrk(requiredSize) == (void *) -1) {
+            perror("mem_sbrk");
+            return NULL;
+        }
+        new = epilogue;
+        block_set_size_and_allocated(new, requiredSize, 1);
+        epilogue = block_next(new);
+        block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
+
+//    printf("payload address: %p\n", (void *) (new + 1));
+        return new + 1;
+    }
+    return 0;
 }
 
 /*                              __
@@ -74,7 +142,25 @@ void *mm_malloc(long size) {
  */
 void mm_free(void *ptr) {
     (void) ptr;  // avoid unused variable warnings
-    // TODO
+    // TODO=
+    block_t *freed = payload_to_block(ptr);
+    if (ptr != NULL) {
+        if (!block_next_allocated(freed)) {
+            pull_free_block(block_next(freed));
+            block_set_size_and_allocated(
+                    freed, block_size(freed) + block_size(block_next(freed)), 0);
+        }
+        if (!block_prev_allocated(freed)) {
+            pull_free_block(block_prev(freed));
+            long freedSize = block_size(freed);
+            freed = block_prev(freed);
+            block_set_size_and_allocated(freed, freedSize + block_size(freed),
+                                         0);
+        } else
+            block_set_allocated(freed, 0);
+
+        insert_free_block(freed);
+    }
 }
 
 /*
