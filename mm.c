@@ -43,11 +43,11 @@ static inline long align(long size) {
  */
 int mm_init(void) {
     flist_first = NULL;
-    if ((prologue = mem_sbrk(TAGS_SIZE * 2)) == (void *) -1) {
+    if ((prologue = mem_sbrk(TAGS_SIZE * 2)) == (void *)-1) {
         perror("mem_sbrk");
         return -1;
     }
-    epilogue = (block_t *) ((char *) prologue + TAGS_SIZE);
+    epilogue = (block_t *)((char *)prologue + TAGS_SIZE);
     block_set_size_and_allocated(prologue, TAGS_SIZE, 1);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
     return 0;
@@ -65,7 +65,7 @@ int mm_init(void) {
  *          is a multiple of ALIGNMENT), or NULL if an error occurred
  */
 void *mm_malloc(long size) {
-    (void) size;  // avoid unused variable warnings
+    (void)size;  // avoid unused variable warnings
     // TODO
     if (size <= 0) {
         fprintf(stderr, "Error: size is less than or equal to 0\n");
@@ -85,27 +85,30 @@ void *mm_malloc(long size) {
             if (new->size == requiredSize) {
                 pull_free_block(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
-//                printf("payload address: %p\n", (void *) (new + 1));
+                //                printf("payload address: %p\n", (void *) (new
+                //                + 1));
                 return new + 1;
             }
-            if (new->size >= requiredSize + MINBLOCKSIZE * 3) {
+            if (new->size >= requiredSize + MINBLOCKSIZE * 1) {
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
-//                printf("payload address: %p\n", (void *) (new + 1));
+                //                printf("payload address: %p\n", (void *) (new
+                //                + 1));
                 return new + 1;
             }
             firstFlag = 0;
             new = block_flink(new);
         }
         if (block_next_size(new) == TAGS_SIZE) {
-//            printf("requiredSize - block_size(new) = %ld\n", requiredSize - block_size(new));
+            //            printf("requiredSize - block_size(new) = %ld\n",
+            //            requiredSize - block_size(new));
             long addon;
             int reqSizeLarger = 0;
             if (block_size(new) < requiredSize) {
                 addon = requiredSize - block_size(new);
             } else {
-                addon = 5 * MINBLOCKSIZE - (block_size(new) - requiredSize);
+                addon = 2 * MINBLOCKSIZE - (block_size(new) - requiredSize);
                 reqSizeLarger = 1;
                 if (addon < 0) {
                     block_set_size(new, block_size(new) - requiredSize);
@@ -114,13 +117,12 @@ void *mm_malloc(long size) {
                     return new + 1;
                 }
             }
-            if (mem_sbrk(addon) == (void *) -1) {
-                printf("addon: %ld\n", addon);
+            if (mem_sbrk(addon) == (void *)-1) {
                 perror("mem_sbrk");
                 return NULL;
             }
             if (reqSizeLarger) {
-                block_set_size(new, 5 * MINBLOCKSIZE);
+                block_set_size(new, 2 * MINBLOCKSIZE);
                 new = block_next(new);
             } else {
                 pull_free_block(new);
@@ -131,7 +133,7 @@ void *mm_malloc(long size) {
             return new + 1;
         }
     }
-    if (mem_sbrk(requiredSize) == (void *) -1) {
+    if (mem_sbrk(requiredSize) == (void *)-1) {
         perror("mem_sbrk");
         return NULL;
     }
@@ -140,7 +142,7 @@ void *mm_malloc(long size) {
     epilogue = block_next(new);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
 
-//    printf("payload address: %p\n", (void *) (new + 1));
+    //    printf("payload address: %p\n", (void *) (new + 1));
     return new + 1;
 }
 
@@ -156,14 +158,14 @@ void *mm_malloc(long size) {
  * returns: nothing
  */
 void mm_free(void *ptr) {
-    (void) ptr;  // avoid unused variable warnings
+    (void)ptr;  // avoid unused variable warnings
     // TODO=
     block_t *freed = payload_to_block(ptr);
     if (ptr != NULL) {
         if (!block_next_allocated(freed)) {
             pull_free_block(block_next(freed));
             block_set_size_and_allocated(
-                    freed, block_size(freed) + block_next_size(freed), 0);
+                freed, block_size(freed) + block_next_size(freed), 0);
         }
         if (!block_prev_allocated(freed)) {
             pull_free_block(block_prev(freed));
@@ -192,7 +194,7 @@ void mm_free(void *ptr) {
  * returns: a pointer to the new memory block's payload
  */
 void *mm_realloc(void *ptr, long size) {
-    (void) ptr, (void) size;  // avoid unused variable warnings
+    (void)ptr, (void)size;  // avoid unused variable warnings
     // TODO
 
     return NULL;
