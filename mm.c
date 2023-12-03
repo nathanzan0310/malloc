@@ -90,7 +90,7 @@ void *mm_malloc(long size) {
 //                printf("payload address: %p\n", (void *) (new + 1));
                 return new + 1;
             }
-            if (new->size > requiredSize) {
+            if (new->size > requiredSize + MINBLOCKSIZE) {
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
