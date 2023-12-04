@@ -259,7 +259,6 @@ void *mm_realloc(void *ptr, long size) {
             if ((block_prev_allocated(new) && block_next_allocated(new)) ||
                 block_next_size(new) + block_size(new) - requiredSize < MINBLOCKSIZE ||
                 block_prev_size(new) + block_size(new) - requiredSize < MINBLOCKSIZE) {
-                printf("balls\n");
                 mm_free(ptr);
                 return mm_malloc(size);
             }
