@@ -209,7 +209,10 @@ void *mm_realloc(void *ptr, long size) {
     } else if (ptr == NULL) {
         return mm_malloc(size);
     } else {
-        if (size <= block_size(new)) {
+        if(requiredSize == block_size(new)) {
+            return ptr;
+        }
+        if (requiredSize <= block_size(new)) {
             mm_free(ptr);
             return mm_malloc(size);
         } else {
