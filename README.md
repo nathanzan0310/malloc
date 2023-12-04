@@ -23,8 +23,8 @@ My mm_realloc strategy was to check if the previous and next blocks were unalloc
 the given block with one or both, so I didn't have to sbrk more. I employed the same split principles as in malloc.
 Unfortunately, I wasn't able to successfully implement the cases where next was unallocated and the combined space
 of next and given was > requested size as I kept getting original payload not preserved errors; nor was I able to 
-implement the case where I checked both previous and next blocks at the same time. If the given block was requested
-to shrink, I simply mm_free(ptr) and malloc(size). I avoided calls to malloc unless necessary as it is very expensive.
-If prev and next were both allocated or not big enough with given block or there were no free blocks large enough, I
-sbrk'ed the required size. This is the only time I ever used sbrk in order to reduce as much unnecessary space as 
-possible.
+implement the case where I checked both previous and next blocks at the same time. However, I was still able to achieve 
+more than 60% utilization in both realloc traces. If the given block was requested to shrink, I simply mm_free(ptr) and
+malloc(size). I avoided calls to malloc unless necessary as it is very expensive. If prev and next were both 
+allocated or not big enough with given block or there were no free blocks large enough, I sbrk'ed the required size.
+This is the only time I ever used sbrk in order to reduce as much unnecessary space as possible.
