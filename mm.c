@@ -297,23 +297,24 @@ void *mm_realloc(void *ptr, long size) {
                         cur = block_flink(cur);
                     }
                 }
-
-
-                if (mem_sbrk(requiredSize) == (void *) -1) {
-                    printf("required_size: %ld\n", requiredSize);
-                    perror("mem_sbrk");
-                    return NULL;
-                }
-                new = memmove(epilogue + 1, new->payload, new->size - TAGS_SIZE);
-                new = payload_to_block(new);
-                block_set_size_and_allocated(new, requiredSize, 1);
-                block_set_size(new, requiredSize);
+            }
+        }
+    }
+    if (mem_sbrk(requiredSize) == (void *) -1) {
+        printf("required_size: %ld\n", requiredSize);
+        perror("mem_sbrk");
+        return NULL;
+    }
+    new = memmove(epilogue + 1, new->payload, new->size - TAGS_SIZE);
+    new = payload_to_block(new);
+    block_set_size_and_allocated(new, requiredSize, 1);
+    block_set_size(new, requiredSize);
 //                printf("block_next(new): %p\n", (void *) block_next(new));
 //                printf("(block_t *) ((char *) mem_heap_hi() - TAGS_SIZE): %p\n",
 //                       (void *) ((char *) mem_heap_hi() - TAGS_SIZE));
-                epilogue = block_next(new);
-                block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
-                mm_free(ptr);
+    epilogue = block_next(new);
+    block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
+    mm_free(ptr);
 //                printf("new: %p\n", (void *) payload_to_block(new));
 //                printf("new start size: %ld\n", block_size(payload_to_block(new)));
 //                printf("new start allocated: %d\n",  block_allocated(payload_to_block(new)));
@@ -322,10 +323,6 @@ void *mm_realloc(void *ptr, long size) {
 //                printf("new end tag: %p\n", (void *) block_end_tag(payload_to_block(new)));
 //                printf("payload[0] after memmove: %ld\n", payload_to_block(new)->payload[0]);
 //                printf("payload[1] after memmove: %ld\n",  payload_to_block(new)->payload[1]);
-                return new + 1;
-            }
-        }
-    }
-
-    return NULL;
+    return new + 1;
+//    return NULL;
 }
