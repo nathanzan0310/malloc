@@ -86,24 +86,18 @@ void *mm_malloc(long size) {
             if (new->size == requiredSize) {
                 pull_free_block(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
-                //                printf("payload address: %p\n", (void *) (new
-                //                + 1));
                 return new + 1;
             }
             if (new->size >= requiredSize + MINBLOCKSIZE) {
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
-                //                printf("payload address: %p\n", (void *) (new
-                //                + 1));
                 return new + 1;
             }
             firstFlag = 0;
             new = block_flink(new);
         }
         if (block_next_size(new) == TAGS_SIZE) {
-            //            printf("requiredSize - block_size(new) = %ld\n",
-            //            requiredSize - block_size(new));
             long addon;
             int reqSizeLarger = 0;
             if (block_size(new) < requiredSize) {
@@ -143,7 +137,6 @@ void *mm_malloc(long size) {
     epilogue = block_next(new);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
 
-    //    printf("payload address: %p\n", (void *) (new + 1));
     return new + 1;
 }
 
@@ -226,27 +219,22 @@ void *mm_realloc(void *ptr, long size) {
                 }
                 if (bbNextSize > requiredSize + MINBLOCKSIZE) {
                     //                    pull_free_block(block_next(new));
-                    //                    printf("new->payload before move:
-                    //                    %p\n", (void *) new->payload);
-                    //                    memcpy((char *) new + bbNextSize -
+                    //                    memmove((char *) new + bbNextSize -
                     //                    requiredSize + 1, new->payload,
                     //                    block_size(new) - TAGS_SIZE);
-                    //                    mm_free(ptr);
-                    //                    block_set_size_and_allocated(new,
-                    //                    bbNextSize - requiredSize, 0); new =
-                    //                    (block_t *) ((char *) new + bbNextSize
-                    //                    - requiredSize);
-                    //                    block_set_size_and_allocated(new,
-                    //                    requiredSize, 1); printf("new->payload
-                    //                    after move: %p\n", (void *)
-                    //                    new->payload); return new + 1;
-                    //                    block_set_size_and_allocated(new,
-                    //                    requiredSize, 1); new =
-                    //                    block_next(new);
+                    //                    printf("new->payload before move:
+                    //                    %p\n", (void *) new->payload);
                     //                    block_set_size_and_allocated(new,
                     //                    bbNextSize - requiredSize, 0);
                     //                    insert_free_block(new);
-                    //                    return block_prev(new) + 1;
+                    //                    new = (block_t *) ((char *) new +
+                    //                    bbNextSize - requiredSize);
+                    //                    block_set_size_and_allocated(new,
+                    //                    requiredSize, 1); printf("new->payload
+                    //                    after move: %p\n", (void *)
+                    //                    new->payload); mm_free(ptr);
+                    //                    printf("new: %p\n",(void *) new);
+                    //                    return new + 1;
                 }
             }
             if (!block_prev_allocated(new)) {
@@ -276,58 +264,30 @@ void *mm_realloc(void *ptr, long size) {
                     MINBLOCKSIZE) {
                 int firstFlag = 1;
                 block_t *cur = flist_first;
-                if (flist_first != NULL) {
-                    while (block_flink(cur) != flist_first || firstFlag) {
-                        if (cur->size == requiredSize) {
-                            pull_free_block(cur);
-                            block_set_size_and_allocated(cur, requiredSize, 1);
-                            if (cur != payload_to_block(ptr)) {
-                                memmove(cur->payload, ptr,
-                                        new->size - TAGS_SIZE);
-                                //                                printf("cur
-                                //                                payload size
-                                //                                == : %ld\n",
-                                //                                cur->size -
-                                //                                TAGS_SIZE);
-                                //                                printf("new
-                                //                                payload size
-                                //                                == : %ld\n",
-                                //                                new->size -
-                                //                                TAGS_SIZE);
-                                mm_free(ptr);
-                            }
-                            //                printf("payload address: %p\n",
-                            //                (void *) (new
-                            //                + 1));
-                            return cur + 1;
-                        }
-                        if (cur->size >= requiredSize + MINBLOCKSIZE) {
-                            block_set_size(cur, block_size(cur) - requiredSize);
-                            cur = block_next(cur);
-                            if (cur != payload_to_block(ptr)) {
-                                memmove(cur->payload, new->payload,
-                                        new->size - TAGS_SIZE);
-                                ////                                printf("cur
-                                /// payload size >= : %ld\n", cur->size -
-                                /// TAGS_SIZE); / printf("new payload size >= :
-                                ///%ld\n", new->size - TAGS_SIZE);
-                            }
-                            block_set_size_and_allocated(cur, requiredSize, 1);
-                            //// printf("payload address: %p\n", (void *) (new
-                            ////                                            +
-                            /// 1));
-                            mm_free(ptr);
-                            return cur + 1;
-                        }
-                        firstFlag = 0;
-                        cur = block_flink(cur);
+                while (cur != NULL &&
+                       (block_flink(cur) != flist_first || firstFlag)) {
+                    if (cur->size == requiredSize) {
+                        pull_free_block(cur);
+                        block_set_size_and_allocated(cur, requiredSize, 1);
+                        memmove(cur->payload, ptr, new->size - TAGS_SIZE);
+                        mm_free(ptr);
+                        return cur + 1;
                     }
+                    if (cur->size >= requiredSize + MINBLOCKSIZE) {
+                        block_set_size(cur, block_size(cur) - requiredSize);
+                        cur = block_next(cur);
+                        block_set_size_and_allocated(cur, requiredSize, 1);
+                        memmove(cur->payload, ptr, new->size - TAGS_SIZE);
+                        mm_free(ptr);
+                        return cur + 1;
+                    }
+                    firstFlag = 0;
+                    cur = block_flink(cur);
                 }
             }
         }
     }
     if (mem_sbrk(requiredSize) == (void *)-1) {
-        printf("required_size: %ld\n", requiredSize);
         perror("mem_sbrk");
         return NULL;
     }
@@ -335,26 +295,8 @@ void *mm_realloc(void *ptr, long size) {
     new = payload_to_block(new);
     block_set_size_and_allocated(new, requiredSize, 1);
     block_set_size(new, requiredSize);
-    //                printf("block_next(new): %p\n", (void *) block_next(new));
-    //                printf("(block_t *) ((char *) mem_heap_hi() - TAGS_SIZE):
-    //                %p\n",
-    //                       (void *) ((char *) mem_heap_hi() - TAGS_SIZE));
     epilogue = block_next(new);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
     mm_free(ptr);
-    //                printf("new: %p\n", (void *) payload_to_block(new));
-    //                printf("new start size: %ld\n",
-    //                block_size(payload_to_block(new))); printf("new start
-    //                allocated: %d\n", block_allocated(payload_to_block(new)));
-    //                printf("new end size: %ld\n",
-    //                block_end_size(payload_to_block(new))); printf("new end
-    //                allocated: %d\n",
-    //                block_end_allocated(payload_to_block(new))); printf("new
-    //                end tag: %p\n", (void *)
-    //                block_end_tag(payload_to_block(new))); printf("payload[0]
-    //                after memmove: %ld\n", payload_to_block(new)->payload[0]);
-    //                printf("payload[1] after memmove: %ld\n",
-    //                payload_to_block(new)->payload[1]);
     return new + 1;
-    //    return NULL;
 }

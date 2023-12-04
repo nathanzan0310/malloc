@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wunused -O0 -Werror -Wpointer-arith -Wpedantic -g -std=gnu99
+CFLAGS = -Wall -Wextra -Wunused -O2 -Werror -Wpointer-arith -Wpedantic -g -std=gnu99
 INLINE_FLAGS = -Wall -Wextra -Wunused -O2 -Wpointer-arith -Wpedantic -g -std=gnu99
 
 # to add tracefiles, add filenames or other macros separated by commas,
