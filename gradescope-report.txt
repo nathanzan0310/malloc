@@ -1,0 +1,13 @@
+idx,trace_name,consistent,util,error_msg
+0,amptjp-bal.rep,1,87.374297,
+1,cccp-bal.rep,1,94.078880,
+2,cp-decl-bal.rep,1,95.807222,
+3,expr-bal.rep,1,96.062815,
+4,random-bal.rep,1,85.355842,
+5,random2-bal.rep,1,84.962936,
+6,binary-bal.rep,1,53.730541,
+7,binary2-bal.rep,1,47.367175,
+8,coalescing-bal.rep,1,98.627168,
+9,coalescing2-bal.rep,1,99.328913,
+10,realloc-bal.rep,1,63.181079,
+11,realloc2-bal.rep,1,62.001676,
