@@ -234,20 +234,6 @@ void *mm_realloc(void *ptr, long size) {
                         new, block_size(new) + block_next_size(new), 1);
                     return new + 1;
                 }
-                if (bbNextSize > requiredSize + MINBLOCKSIZE) {
-                    // unfinished cur and next block splitting implementation
-                    //                    pull_free_block(block_next(new));
-                    //                    memmove((char *) new + bbNextSize -
-                    //                    requiredSize + 1, new->payload,
-                    //                    block_size(new) - TAGS_SIZE);
-                    //                    block_set_size_and_allocated((block_t
-                    //                    *) ((char *) new + bbNextSize -
-                    //                    requiredSize), requiredSize, 1);
-                    //                    block_set_size_and_allocated(new,
-                    //                    bbNextSize - requiredSize, 0);
-                    //                    insert_free_block(new);
-                    //                    return block_next(new) + 1;
-                }
             }
             if (!block_prev_allocated(new)) {
                 // coalesce with previous block if suitable
