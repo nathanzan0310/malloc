@@ -88,12 +88,14 @@ void *mm_malloc(long size) {
     if (flist_first != NULL) {
         int firstFlag = 1;
         while (block_flink(new) != flist_first || firstFlag) {
+            // Search through free list for suitable block
             if (new->size == requiredSize) {
                 pull_free_block(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
                 return new + 1;
             }
             if (new->size >= requiredSize + MINBLOCKSIZE) {
+                // If splitting, make sure leftover > MINBLOCKSIZE
                 block_set_size(new, block_size(new) - requiredSize);
                 new = block_next(new);
                 block_set_size_and_allocated(new, requiredSize, 1);
@@ -103,14 +105,19 @@ void *mm_malloc(long size) {
             new = block_flink(new);
         }
         if (block_next_size(new) == TAGS_SIZE) {
+            // Last free block right before epilogue, can mem_sbrk less
             long addon;
-            int reqSizeLarger = 0;
-            if (block_size(new) < requiredSize) {
+            int reqSizeSmaller = 0;
+            if (block_size(new) <
+                requiredSize)  // reqSize > free block size, sbrk the difference
                 addon = requiredSize - block_size(new);
-            } else {
+            else {
+                // reqSize < free block size, sbrk enough so that leftover is
+                // useful
                 addon = 2 * MINBLOCKSIZE - (block_size(new) - requiredSize);
-                reqSizeLarger = 1;
+                reqSizeSmaller = 1;
                 if (addon < 0) {
+                    // if difference is large enough, split without sbrk
                     block_set_size(new, block_size(new) - requiredSize);
                     new = block_next(new);
                     block_set_size_and_allocated(new, requiredSize, 1);
@@ -121,12 +128,15 @@ void *mm_malloc(long size) {
                 perror("mem_sbrk");
                 return NULL;
             }
-            if (reqSizeLarger) {
+            if (reqSizeSmaller) {
+                // If reqSizeSmaller i.e. need to split after sbrk, then resize
+                // free block
                 block_set_size(new, 2 * MINBLOCKSIZE);
                 new = block_next(new);
-            } else {
+            } else
+                // otherwise remove free block
                 pull_free_block(new);
-            }
+
             block_set_size_and_allocated(new, requiredSize, 1);
             epilogue = block_next(new);
             block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
@@ -134,6 +144,7 @@ void *mm_malloc(long size) {
         }
     }
     if (mem_sbrk(requiredSize) == (void *)-1) {
+        // if no space, just extend by required size and allocate
         perror("mem_sbrk");
         return NULL;
     }
@@ -160,19 +171,23 @@ void mm_free(void *ptr) {
     (void)ptr;  // avoid unused variable warnings
     // TODO=
     block_t *freed = payload_to_block(ptr);
+
     if (ptr != NULL) {
         if (!block_next_allocated(freed)) {
+            // coalesce with previous free
             pull_free_block(block_next(freed));
             block_set_size_and_allocated(
                 freed, block_size(freed) + block_next_size(freed), 0);
         }
         if (!block_prev_allocated(freed)) {
+            // coalesce with next free
             pull_free_block(block_prev(freed));
             long freedSize = block_size(freed);
             freed = block_prev(freed);
             block_set_size_and_allocated(freed, freedSize + block_size(freed),
                                          0);
         } else
+            // otherwise allocate free and add to list
             block_set_allocated(freed, 0);
         insert_free_block(freed);
     }
@@ -206,10 +221,12 @@ void *mm_realloc(void *ptr, long size) {
         if (requiredSize == block_size(new)) {
             return ptr;
         } else if (requiredSize < block_size(new)) {
+            // if block is shrinking, just free and re-malloc
             mm_free(ptr);
             return mm_malloc(size);
         } else {
             if (!block_next_allocated(new)) {
+                // coalesce with next block if suitable
                 long bbNextSize = block_next_size(new) + block_size(new);
                 if (bbNextSize == requiredSize) {
                     pull_free_block(block_next(new));
@@ -218,6 +235,7 @@ void *mm_realloc(void *ptr, long size) {
                     return new + 1;
                 }
                 if (bbNextSize > requiredSize + MINBLOCKSIZE) {
+                    // unfinished cur and next block splitting implementation
                     //                    pull_free_block(block_next(new));
                     //                    memmove((char *) new + bbNextSize -
                     //                    requiredSize + 1, new->payload,
@@ -232,6 +250,7 @@ void *mm_realloc(void *ptr, long size) {
                 }
             }
             if (!block_prev_allocated(new)) {
+                // coalesce with previous block if suitable
                 long bbPrevSize = block_prev_size(new) + block_size(new);
                 if (bbPrevSize == requiredSize) {
                     pull_free_block(block_prev(new));
@@ -256,11 +275,14 @@ void *mm_realloc(void *ptr, long size) {
                     MINBLOCKSIZE ||
                 block_prev_size(new) + block_size(new) - requiredSize <
                     MINBLOCKSIZE) {
+                // if can't coalesce, search for first suitable free block and
+                // reallocate
                 int firstFlag = 1;
                 block_t *cur = flist_first;
                 while (cur != NULL &&
                        (block_flink(cur) != flist_first || firstFlag)) {
                     if (cur->size == requiredSize) {
+                        // copy over original payload to cur and free original
                         pull_free_block(cur);
                         block_set_size_and_allocated(cur, requiredSize, 1);
                         memmove(cur->payload, ptr, new->size - TAGS_SIZE);
@@ -268,6 +290,7 @@ void *mm_realloc(void *ptr, long size) {
                         return cur + 1;
                     }
                     if (cur->size >= requiredSize + MINBLOCKSIZE) {
+                        // copy over original payload to cur and free original
                         block_set_size(cur, block_size(cur) - requiredSize);
                         cur = block_next(cur);
                         block_set_size_and_allocated(cur, requiredSize, 1);
@@ -282,10 +305,12 @@ void *mm_realloc(void *ptr, long size) {
         }
     }
     if (mem_sbrk(requiredSize) == (void *)-1) {
+        // if no suitable block, just extend by reqSize
         perror("mem_sbrk");
         return NULL;
     }
     new = memmove(epilogue + 1, new->payload, new->size - TAGS_SIZE);
+    // copy over original payload to new and free original
     new = payload_to_block(new);
     block_set_size_and_allocated(new, requiredSize, 1);
     block_set_size(new, requiredSize);
